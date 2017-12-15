@@ -7,18 +7,26 @@
 
 use strict;
 use Digest::MD5 qw(md5_hex);
-use Getopt::Std;
+use Getopt::Long;
 
-my %opts;
+my $do_backup = undef;
+my $mode = undef;
+my $owner = undef;
+my $group = undef;
+my $REMOVELINE = undef;
+my @SUBSTITUTE = ();
 
-getopts('bm:o:g:R:S:', \%opts);
+Getopt::Long::Configure ("bundling");
+GetOptions(
+	"b" => \$do_backup,
+	"m=s" => \$mode,
+	"o=s" => \$owner,
+	"g=s" => \$group,
+	"R=s" => \$REMOVELINE,
+	"S=s" => \@SUBSTITUTE,
+);
 
-my $do_backup = exists($opts{'b'}) ? 1 : undef;
-my $mode = exists($opts{'m'}) ? oct($opts{'m'}) : undef;
-my $owner = exists($opts{'o'}) ? $opts{'o'} : undef;
-my $group = exists($opts{'g'}) ? $opts{'g'} : undef;
-my $REMOVELINE = exists($opts{'R'}) ? $opts{'R'} : undef;
-my @SUBSTITUTE = exists($opts{'S'}) ? split(/\n/, $opts{'S'}) : ();
+$mode = oct($mode);
 
 my $uid = $>;
 my $gid = $(;
@@ -86,8 +94,9 @@ foreach my $f (@ARGV) {
 		$s =~ /^s(.)/ or next;
 		my ($d) = $1;
 		$s =~ /s\Q$d\E([^\Q$d\E]*)\Q$d\E([^\Q$d\E]*)\Q$d\E([^\Q$d\E]*)$/;
-		my ($a1, $a2) = ($1, $2);
-		$body =~ s/\Q$a1\E/$a2/m;
+		my ($a1, $a2, $mods) = ($1, $2, $3);
+		if ($mods =~ /[g]/) { $body =~ s/\Q$a1\E/$a2/mg; }
+		else { $body =~ s/\Q$a1\E/$a2/m; }
 	}
 
 	$digest = md5_hex($body);
